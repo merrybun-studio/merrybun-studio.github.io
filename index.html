@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>메리번 예식 체크리스트</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,600&family=Fredoka:wght@600&family=Noto+Sans+KR:wght@400;500;700;800&display=swap">
+<style>
+/* Layout: one narrow paper column, sections as outlined cards, sticky bottom bar for copy */
+:root{
+  --bg:#F4F2EF; --card:#FFFFFF; --ink:#2B2421; --sub:#7A716A; --fill:#ECE8E2; --line:#D9D4CE; --accent:#CF6573;
+  --f-display:'Playfair Display', Georgia, serif;
+  --f-logo:'Fredoka', 'Noto Sans KR', sans-serif;
+  --f-body:'Noto Sans KR', -apple-system, 'Apple SD Gothic Neo', sans-serif;
+  color-scheme: light;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.6;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:0}
+.wrap{max-width:620px;margin:0 auto;padding-block:40px 140px;display:flex;flex-direction:column;gap:28px}
+header{display:flex;flex-direction:column;align-items:center;gap:18px;text-align:center}
+.bubble{display:flex;flex-direction:column;align-items:center}
+.bubble span{background:var(--ink);color:var(--bg);font-family:var(--f-display);font-style:italic;font-weight:600;font-size:clamp(30px,8vw,42px);line-height:1;padding:12px 30px 18px;border-radius:999px}
+.bubble i{width:0;height:0;border-left:11px solid transparent;border-right:11px solid transparent;border-top:12px solid var(--ink);margin-top:-1px}
+.logo{font-family:var(--f-logo);font-weight:600;font-size:22px;letter-spacing:2px}
+header h1{font-size:clamp(22px,5.5vw,28px);font-weight:800;letter-spacing:-.5px;margin:0;text-wrap:balance}
+header p{margin:0;color:var(--sub);font-size:14.5px;text-wrap:balance}
+.notice{background:var(--fill);border-radius:20px;padding:16px 20px;font-size:14px;display:flex;flex-direction:column;gap:4px}
+.notice b{font-weight:700}
+section{background:var(--card);border:2px solid var(--ink);border-radius:26px;box-shadow:6px 6px 0 -2px var(--bg),6px 6px 0 0 var(--ink);padding:22px 20px 8px;margin-right:6px}
+section > h2{margin:0 0 6px;font-size:13px;letter-spacing:2px;color:var(--sub);font-weight:700}
+.q{padding:16px 0 20px;border-top:1.5px dashed var(--line);display:flex;flex-direction:column;gap:10px}
+section > h2 + .q{border-top:none;padding-top:8px}
+.q label.t, .q .t{font-weight:700;font-size:16px;display:flex;gap:8px}
+.q .t em{font-style:normal;color:var(--sub);font-weight:500;min-width:1.6em;font-variant-numeric:tabular-nums}
+.q .d{color:var(--sub);font-size:13.5px;margin-top:-4px}
+.opts{display:flex;flex-direction:column;gap:8px}
+.opt{display:flex;align-items:flex-start;gap:12px;background:var(--fill);border:1.5px solid transparent;border-radius:14px;padding:12px 14px;cursor:pointer;font-size:14.5px}
+.opt input{margin:3px 0 0;width:18px;height:18px;accent-color:var(--ink);flex-shrink:0}
+.opt:has(input:checked){border-color:var(--ink);background:var(--card)}
+.opt:focus-within{outline:2px solid var(--ink);outline-offset:2px}
+input[type=text],textarea{width:100%;font:inherit;color:var(--ink);background:var(--fill);border:1.5px solid transparent;border-radius:14px;padding:12px 14px}
+textarea{min-height:84px;resize:vertical}
+input[type=text]:focus,textarea:focus{outline:none;border-color:var(--ink);background:var(--card)}
+input::placeholder,textarea::placeholder{color:#A69D95}
+.other{margin-top:2px}
+.bar{position:fixed;left:0;right:0;bottom:0;background:var(--bg);border-top:1.5px solid var(--line);
+  padding:12px max(16px, env(safe-area-inset-right, 0px)) calc(12px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px))}
+.bar .in{max-width:620px;margin:0 auto;display:flex;align-items:center;gap:12px}
+.bar .prog{flex:1;min-width:0;font-size:13px;color:var(--sub)}
+.bar .prog b{color:var(--ink);font-variant-numeric:tabular-nums}
+button{font:inherit;font-weight:700;cursor:pointer;border-radius:999px;padding:13px 22px;border:2px solid var(--ink);background:var(--ink);color:var(--bg);font-size:15px}
+button:disabled{opacity:.6;cursor:default}
+button.ghost{background:transparent;color:var(--ink)}
+button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+#out{display:flex;flex-direction:column;gap:12px}
+#out pre{white-space:pre-wrap;word-break:break-word;background:var(--fill);border-radius:16px;padding:16px;font:13.5px/1.7 var(--f-body);margin:0;max-height:360px;overflow:auto;user-select:all}
+#out .msg{font-size:14px}
+#out .msg b{font-weight:800}
+.ok{color:var(--accent);font-weight:700}
+.err{color:var(--accent);font-size:13.5px;font-weight:700;margin-top:-2px}
+.hp{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
+footer{text-align:center;color:var(--sub);font-size:13px}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div class="bubble"><span>check list!</span><i></i></div>
+    <h1>예식 전 체크리스트</h1>
+    <p>당일 축의대에서 생길 수 있는 상황을 미리 정해두면, 저희가 두 분 뜻대로 정확하게 응대할 수 있어요.</p>
+    <div class="logo">MERRYBUN</div>
+  </header>
+
+  <div class="notice">
+    <div><b>작성 기한</b> · 예식 2주 전까지</div>
+    <div><b>보내는 방법</b> · 모두 작성한 뒤 맨 아래 <b>개인정보 동의</b>에 체크하고 <b>제출하기</b>를 눌러주세요.</div>
+    <div>작성 중인 내용은 이 기기에 자동 저장돼요.</div>
+  </div>
+
+  <form id="f" novalidate></form>
+
+  <section id="done">
+    <h2>개인정보 수집 · 이용 동의</h2>
+    <div class="q">
+      <div class="d" style="margin-top:0">
+        · 수집 항목: 이름, 연락처, 예식 일시·장소, 식권 인계자·축의금 수령자의 이름·관계·연락처, 기타 작성 내용<br>
+        · 이용 목적: 예식 당일 축의대 운영 및 정산, 고객 상담<br>
+        · 보관 기간: 예식 종료 후 6개월까지 보관 후 파기<br>
+        · 동의하지 않으실 수 있지만, 이 경우 체크리스트를 제출할 수 없어요.
+      </div>
+      <input type="text" id="hp" class="hp" name="mb_contact_alt" tabindex="-1" autocomplete="off" aria-hidden="true">
+      <label class="opt" for="consent"><input type="checkbox" id="consent"><span><b>위 내용에 동의합니다.</b> 인계자·수령자 정보는 당사자에게 알리고 받았어요.</span></label>
+    </div>
+    <div id="out" class="q">
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button type="button" id="submit">제출하기</button>
+        <button type="button" class="ghost" id="copy">답변 복사하기</button>
+      </div>
+      <div id="status" class="ok" role="status" aria-live="polite"></div>
+      <pre id="preview" hidden></pre>
+    </div>
+  </section>
+
+  <footer>문의 · 인스타그램 DM @__merrybun</footer>
+</div>
+
+<div class="bar"><div class="in">
+  <div class="prog">작성 <b id="cnt">0</b> / <b id="tot">0</b> 문항</div>
+  <button type="button" id="submit2">제출하기</button>
+</div></div>
+
+<script>
+const S=[
+ {h:'기본 정보',q:[
+  {id:'name',req:true,t:'계약자 이름 / 연락처',d:'양측 계약이어도 한 분만 적어주세요.',type:'text',ph:'예) 신랑 김메리 / 010-0000-0000'},
+  {id:'date',req:true,t:'예식 일시 · 웨딩홀',type:'text',ph:'예) 2026.11.21(토) 13:00 · 메리홀 3층 그랜드홀'},
+  {id:'plan',t:'계약 상품',type:'radio',o:['베이직 · 신랑측','베이직 · 신부측','프리미엄 · 양가']},
+  {id:'intro',t:'하객분들께 저희를 어떻게 소개할까요?',d:'축의대에서 "누구세요?"라고 물으실 때 답할 관계예요.',type:'radio',o:['축의대 업체','신랑·신부 친구','친척(사촌)'],other:true}
+ ]},
+ {h:'식권',q:[
+  {id:'guar',t:'예식장과 계약한 보증 인원',d:'양측 합산 또는 측별로 적어주세요.',type:'text',ph:'예) 신랑측 120명 / 신부측 100명'},
+  {id:'tix',t:'메리번에 맡기실 식권 수',d:'혼주님이나 두 분이 따로 보관할 식권은 빼고 적어주세요.',type:'text',ph:'예) 신랑측 대인 110 · 소인 10 / 신부측 대인 95 · 소인 5'},
+  {id:'kid',t:'소인 식권 기준',d:'예식장 기준을 확인해 적어주세요. 소인 식권이 따로 없으면 "없음".',type:'text',ph:'예) 만 4세 ~ 초등학생'},
+  {id:'custom',t:'커스텀 식권 무료 제작 (오픈 이벤트)',d:'외부 식권을 쓸 수 있는 웨딩홀에서만 가능해요.',type:'radio',o:['신청할게요','웨딩홀 식권을 쓸게요']},
+  {id:'merge',t:'신랑측 · 신부측 식권 통합 여부',type:'radio',o:['통합 (한쪽이 모자라면 서로 나눠 쓰고, 내역은 장부에 기록)','별도 (측별로 따로 관리, 서로 나누지 않음)']},
+  {id:'short',t:'식권이 모자랄 때',type:'radio',o:['예식장에서 현장 추가 (추가 가능한 수량 안에서)','신랑·신부 측에 먼저 연락 후 결정','식권 소진 안내 후 식사비는 혼주님께 문의 안내'],other:true},
+  {id:'prepaid',t:'계좌이체 · 봉투를 미리 전달한 하객이 식권을 요청할 때',type:'radio',o:['이름 · 사유를 장부에 적고 식권 전달','식권 제공 불가, 신랑·신부 또는 혼주님께 문의 안내'],other:true},
+  {id:'lost',t:'식권 분실 · 추가 요청',type:'radio',o:['장부에서 이름 확인되면 추가 제공 (장부 기록)','추가 제공 불가, 신랑·신부 또는 혼주님께 문의 안내'],other:true},
+  {id:'vendor',t:'예식 관련 업체의 식권 요청',d:'스냅, 사회자, 축가, 버스 대절, 화환 업체 등이 요청할 때예요.',type:'radio',o:['여유 식권이 있을 때만 제공','요청하면 제공','제공 불가 안내'],other:true},
+  {id:'vendorlist',t:'식권을 드려야 하는 업체 (있다면)',type:'text',ph:'예) 스냅 작가 2명, 축가 1명'}
+ ]},
+ {h:'축의금 · 정산',q:[
+  {id:'settle',t:'정산 방식',type:'radio',o:['밀봉 보관 · 봉투를 열지 않고 받은 즉시 밀봉','확인 후 밀봉 · 금액 확인 후 다시 밀봉','권종별 정산 · 봉투를 모두 열어 권종별로 정리']},
+  {id:'refund',t:'축의금 반환 요청',d:'측을 헷갈렸거나 다른 예식 하객이 잘못 냈다며 돌려달라고 할 때예요.',type:'radio',o:['장부에서 이름 확인 후 반환','현장 반환 불가, 신랑·신부 연락처 안내'],other:true},
+  {id:'receiver',t:'식권 인계자 · 축의금 가방 수령자',d:'이름 / 관계 / 연락처. 당일 두 분과 혼주님은 매우 바쁘시니 형제·자매나 가까운 친척을 추천해요. 양가는 각각 적어주세요.',type:'textarea',ph:'신랑측: 김OO / 동생 / 010-0000-0000\n신부측: 이OO / 언니 / 010-0000-0000'},
+  {id:'ledger',t:'엑셀 장부 받으실 곳',type:'text',ph:'이메일 또는 카카오톡 이름'}
+ ]},
+ {h:'촬영 · 안내 카드 · 기타',q:[
+  {id:'video',t:'축의대 영상 촬영',d:'접수 과정을 영상으로 남겨 정산 확인에 써요. 삼각대를 설치해도 되는지 예식장에 확인 부탁드려요.',type:'radio',o:['촬영 동의','촬영 원하지 않음']},
+  {id:'flower',t:'화환 촬영',type:'radio',o:['촬영해 주세요','괜찮아요']},
+  {id:'guide',t:'하객 안내 카드에 넣을 내용',d:'식사 장소·시간, 주차 등록 방법, 답례품 교환 장소, ATM 위치 등을 알려주세요.',type:'textarea',ph:'예) 식사: 2층 연회장 12:30~14:30 / 주차: 2시간 무료, 축의대에서 등록 / ATM: 1층 로비'},
+  {id:'etc',t:'그 밖에 알려주실 내용',d:'꼭 챙겨야 할 하객, 주의할 점 등 무엇이든 좋아요.',type:'textarea',ph:''}
+ ]}
+];
+// ▼ Apps Script 웹앱 배포 후 받은 URL을 여기에 붙여넣으세요
+const SCRIPT_URL='여기에_웹앱_URL';
+const KEY='merrybun-checklist-v1';
+const T0=Date.now();
+const f=document.getElementById('f');
+let n=0;
+S.forEach(sec=>{
+  const s=document.createElement('section');
+  const h=document.createElement('h2');h.textContent=sec.h;s.appendChild(h);
+  sec.q.forEach(q=>{
+    n++;q.n=n;
+    const w=document.createElement('div');w.className='q';
+    const t=document.createElement(q.type==='radio'?'div':'label');t.className='t';
+    if(q.type!=='radio')t.htmlFor='q_'+q.id;
+    t.innerHTML='<em>'+String(n).padStart(2,'0')+'</em><span></span>';t.querySelector('span').textContent=q.t;
+    if(q.type==='radio'){t.id='lab_'+q.id;}
+    w.appendChild(t);
+    if(q.d){const d=document.createElement('div');d.className='d';d.textContent=q.d;w.appendChild(d);}
+    if(q.type==='radio'){
+      const g=document.createElement('div');g.className='opts';g.setAttribute('role','radiogroup');g.setAttribute('aria-labelledby','lab_'+q.id);
+      const opts=q.o.slice();if(q.other)opts.push('직접 입력');
+      opts.forEach((o,i)=>{const l=document.createElement('label');l.className='opt';
+        const r=document.createElement('input');r.type='radio';r.name=q.id;r.value=o;r.id='q_'+q.id+'_'+i;
+        const sp=document.createElement('span');sp.textContent=o;l.append(r,sp);g.appendChild(l);});
+      w.appendChild(g);
+      if(q.other){const x=document.createElement('input');x.type='text';x.className='other';x.id='q_'+q.id+'_other';x.placeholder='직접 입력 내용';x.hidden=true;x.setAttribute('aria-label',q.t+' 직접 입력');w.appendChild(x);}
+    }else if(q.type==='textarea'){const x=document.createElement('textarea');x.id='q_'+q.id;x.placeholder=q.ph||'';w.appendChild(x);}
+    else{const x=document.createElement('input');x.type='text';x.id='q_'+q.id;x.placeholder=q.ph||'';w.appendChild(x);}
+    if(q.req){const e=document.createElement('div');e.className='err';e.id='err_'+q.id;e.hidden=true;e.textContent='꼭 적어주세요.';w.appendChild(e);}
+    s.appendChild(w);
+  });
+  f.appendChild(s);
+});
+const ALL=S.flatMap(s=>s.q);
+document.getElementById('tot').textContent=ALL.length;
+function val(q){
+  if(q.type==='radio'){const c=f.querySelector('input[name="'+q.id+'"]:checked');if(!c)return '';
+    if(c.value==='직접 입력'){const o=document.getElementById('q_'+q.id+'_other').value.trim();return o?('직접 입력: '+o):'직접 입력';}
+    return c.value;}
+  return document.getElementById('q_'+q.id).value.trim();
+}
+function sync(){
+  ALL.forEach(q=>{if(q.other){const c=f.querySelector('input[name="'+q.id+'"]:checked');document.getElementById('q_'+q.id+'_other').hidden=!(c&&c.value==='직접 입력');}});
+  document.getElementById('cnt').textContent=ALL.filter(q=>val(q)).length;
+}
+function save(){
+  const d={};ALL.forEach(q=>{if(q.type==='radio'){const c=f.querySelector('input[name="'+q.id+'"]:checked');d[q.id]=c?c.value:'';if(q.other)d[q.id+'_other']=document.getElementById('q_'+q.id+'_other').value;}else d[q.id]=document.getElementById('q_'+q.id).value;});
+  try{localStorage.setItem(KEY,JSON.stringify(d));}catch(e){}
+}
+function load(){
+  let d=null;try{d=JSON.parse(localStorage.getItem(KEY)||'null');}catch(e){}
+  if(!d)return;
+  ALL.forEach(q=>{if(q.type==='radio'){const r=[...f.querySelectorAll('input[name="'+q.id+'"]')].find(x=>x.value===d[q.id]);if(r)r.checked=true;if(q.other&&d[q.id+'_other'])document.getElementById('q_'+q.id+'_other').value=d[q.id+'_other'];}else if(d[q.id])document.getElementById('q_'+q.id).value=d[q.id];});
+}
+function text(){
+  let out='[메리번 예식 체크리스트]\n';
+  S.forEach(s=>{out+='\n■ '+s.h+'\n';s.q.forEach(q=>{const v=val(q);out+=String(q.n).padStart(2,'0')+'. '+q.t+'\n   → '+(v?v.replace(/\n/g,'\n     '):'(미작성)')+'\n';});});
+  return out;
+}
+function setErr(q,on){const x=document.getElementById('q_'+q.id),m=document.getElementById('err_'+q.id);m.hidden=!on;
+  if(on){x.setAttribute('aria-invalid','true');x.setAttribute('aria-describedby',m.id);}else{x.removeAttribute('aria-invalid');x.removeAttribute('aria-describedby');}}
+f.addEventListener('input',e=>{const q=ALL.find(q=>q.req&&e.target.id==='q_'+q.id);if(q&&val(q))setErr(q,false);sync();save();});
+f.addEventListener('change',()=>{sync();save();});
+f.addEventListener('submit',e=>e.preventDefault());
+const st=document.getElementById('status'),pv=document.getElementById('preview');
+async function copy(){
+  const t=text();pv.textContent=t;
+  const left=ALL.length-ALL.filter(q=>val(q)).length;
+  try{await navigator.clipboard.writeText(t);
+    st.textContent='복사했어요! 인스타그램 DM @__merrybun 에 붙여넣어 보내주세요.'+(left?' (미작성 '+left+'문항)':'');}
+  catch(e){pv.hidden=false;const r=document.createRange();r.selectNodeContents(pv);const sel=getSelection();sel.removeAllRanges();sel.addRange(r);
+    st.textContent='자동 복사가 안 돼서 아래 답변을 선택해 두었어요. 길게 눌러 복사해 주세요.';}
+  document.getElementById('done').scrollIntoView({behavior:'smooth',block:'start'});
+}
+let sending=false;
+function btns(dis,label){['submit','submit2'].forEach(i=>{const b=document.getElementById(i);b.disabled=dis;b.textContent=label;});}
+async function submit(){
+  if(sending)return;
+  const left=ALL.length-ALL.filter(q=>val(q)).length;
+  const miss=ALL.filter(q=>q.req&&!val(q));
+  ALL.forEach(q=>{if(q.req)setErr(q,!val(q));});
+  if(miss.length){
+    st.textContent='01번(계약자)과 02번(예식 일시 · 웨딩홀)은 꼭 적어주세요.';
+    const x=document.getElementById('q_'+miss[0].id);x.focus({preventScroll:true});x.scrollIntoView({behavior:'smooth',block:'center'});return;}
+  if(!document.getElementById('consent').checked){
+    st.textContent='개인정보 수집 · 이용 동의에 체크해 주세요.';
+    document.getElementById('done').scrollIntoView({behavior:'smooth',block:'start'});return;}
+  sending=true;btns(true,'보내는 중…');
+  const answers={};ALL.forEach(q=>{answers[String(q.n).padStart(2,'0')+'. '+q.t]=val(q);});
+  // 페이지를 연 지 3초가 안 됐으면 잠깐 기다렸다 보내요 (서버의 스팸 기준)
+  const wait=3200-(Date.now()-T0);if(wait>0)await new Promise(r=>setTimeout(r,wait));
+  const payload={consent:true,hp:document.getElementById('hp').value,elapsed:Date.now()-T0,answers};
+  let ok=false;
+  if(/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(SCRIPT_URL)){
+    const ac=new AbortController(),tm=setTimeout(()=>ac.abort(),20000);
+    try{
+      // no-cors·헤더 없이 보내야 사전 요청 없이 전송되고, 서버 응답({ok:true})을 읽을 수 있어요
+      const r=await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify(payload),signal:ac.signal});
+      const j=await r.json();ok=r.ok&&j.ok===true;
+    }catch(e){}
+    clearTimeout(tm);
+  }
+  if(ok){
+    st.textContent='제출됐어요! 확인 후 연락드릴게요.'+(left?' (미작성 '+left+'문항은 DM으로 알려주셔도 돼요)':'');
+    try{localStorage.removeItem(KEY);}catch(e){}
+    btns(true,'제출 완료');
+  }else{
+    sending=false;btns(false,'다시 제출하기');
+    st.textContent='전송에 실패했어요. 잠시 후 다시 눌러주시거나, 답변 복사하기로 복사해 인스타그램 DM @__merrybun 으로 보내주세요.';
+  }
+  document.getElementById('done').scrollIntoView({behavior:'smooth',block:'start'});
+}
+document.getElementById('submit').addEventListener('click',submit);
+document.getElementById('submit2').addEventListener('click',submit);
+document.getElementById('copy').addEventListener('click',copy);
+load();sync();
+</script>
+
+</body>
+</html>
