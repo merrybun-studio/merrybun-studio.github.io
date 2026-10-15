@@ -12,24 +12,35 @@ const MIN_ELAPSED = 3000;  // 페이지를 연 뒤 이 시간(ms)보다 빨리 �
 function doPost(e) {
   let data;
   try {
-    data = JSON.parse(e.postData.contents);
+    // fetch는 본문(JSON)으로, 보조 경로(숨은 iframe 폼)는 payload 칸으로 보내요
+    const raw = (e.parameter && e.parameter.payload) || e.postData.contents;
+    data = JSON.parse(raw);
   } catch (err) {
     return reply({ ok: false, error: 'bad_request' });
   }
+  const res = save(data);
+  return data.via === 'frame' ? replyFrame(res, data.sid) : reply(res);
+}
 
+function save(data) {
   // 스팸: 허니팟 칸이 채워져 있거나 너무 빨리 제출되면 저장하지 않아요
-  if (data.hp) return reply({ ok: true });
-  if (!(Number(data.elapsed) >= MIN_ELAPSED)) return reply({ ok: false, error: 'too_fast' });
+  if (data.hp) return { ok: true };
+  if (!(Number(data.elapsed) >= MIN_ELAPSED)) return { ok: false, error: 'too_fast' };
 
-  if (data.consent !== true) return reply({ ok: false, error: 'no_consent' });
+  if (data.consent !== true) return { ok: false, error: 'no_consent' };
   const answers = cleanAnswers(data.answers);
-  if (!answers) return reply({ ok: false, error: 'bad_request' });
+  if (!answers) return { ok: false, error: 'bad_request' };
   const keys = Object.keys(answers);
-  if (!answers[keys[0]] || !answers[keys[1]]) return reply({ ok: false, error: 'missing_required' });
+  if (!answers[keys[0]] || !answers[keys[1]]) return { ok: false, error: 'missing_required' };
+  const sid = cleanSid(data.sid);
 
   const lock = LockService.getScriptLock();
-  if (!lock.tryLock(10000)) return reply({ ok: false, error: 'busy' });
+  if (!lock.tryLock(10000)) return { ok: false, error: 'busy' };
   try {
+    // 같은 제출 번호가 다시 오면(재전송) 저장하지 않고 성공으로 답해요
+    const cache = CacheService.getScriptCache();
+    if (sid && cache.get('sid_' + sid)) return { ok: true, dup: true };
+
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = ss.getSheetByName(SHEET_NAME) || ss.insertSheet(SHEET_NAME);
 
@@ -51,10 +62,11 @@ function doPost(e) {
       return safe(answers[h] || '');
     });
     sheet.appendRow(row);
-    return reply({ ok: true });
+    if (sid) cache.put('sid_' + sid, '1', 21600);  // 6시간 동안 기억해요
+    return { ok: true };
   } catch (err) {
     console.error(err);
-    return reply({ ok: false, error: 'server' });
+    return { ok: false, error: 'server' };
   } finally {
     lock.releaseLock();
   }
@@ -70,6 +82,10 @@ function cleanAnswers(a) {
   return out;
 }
 
+function cleanSid(s) {
+  return /^[\w-]{8,64}$/.test(String(s || '')) ? String(s) : '';
+}
+
 // = + - @ 로 시작하는 값이 수식으로 실행되지 않게 글자로 저장해요
 function safe(v) {
   return /^[=+\-@]/.test(v) ? "'" + v : v;
@@ -77,6 +93,13 @@ function safe(v) {
 
 function reply(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
+}
+
+// 보조 경로: 숨은 iframe 안에서 결과를 체크리스트 페이지로 전달해요
+function replyFrame(obj, sid) {
+  const msg = JSON.stringify({ mb: cleanSid(sid), ok: obj.ok === true, error: obj.error || '' }).replace(/</g, '\\u003c');
+  return HtmlService.createHtmlOutput('<script>window.top.postMessage(' + msg + ', "*");</script>')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
 // Apps Script 편집기에서 이 함수를 선택해 ▶실행하면, 웹 없이도 시트 저장을 시험할 수 있어요.

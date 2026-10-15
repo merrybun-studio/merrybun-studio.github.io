@@ -207,8 +207,9 @@ function text(){
 }
 function setErr(q,on){const x=document.getElementById('q_'+q.id),m=document.getElementById('err_'+q.id);m.hidden=!on;
   if(on){x.setAttribute('aria-invalid','true');x.setAttribute('aria-describedby',m.id);}else{x.removeAttribute('aria-invalid');x.removeAttribute('aria-describedby');}}
-f.addEventListener('input',e=>{const q=ALL.find(q=>q.req&&e.target.id==='q_'+q.id);if(q&&val(q))setErr(q,false);sync();save();});
-f.addEventListener('change',()=>{sync();save();});
+// 답변을 고치면 새 제출로 보고 제출 번호를 새로 만들어요
+f.addEventListener('input',e=>{const q=ALL.find(q=>q.req&&e.target.id==='q_'+q.id);if(q&&val(q))setErr(q,false);SID=null;sync();save();});
+f.addEventListener('change',()=>{SID=null;sync();save();});
 f.addEventListener('submit',e=>e.preventDefault());
 const st=document.getElementById('status'),pv=document.getElementById('preview');
 async function copy(){
@@ -220,7 +221,35 @@ async function copy(){
     st.textContent='자동 복사가 안 돼서 아래 답변을 선택해 두었어요. 길게 눌러 복사해 주세요.';}
   document.getElementById('done').scrollIntoView({behavior:'smooth',block:'start'});
 }
-let sending=false;
+let sending=false,SID=null;
+function uid(){return crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2);}
+// 1차: fetch로 보내고 서버 응답({ok:true})을 읽어요. no-cors·헤더를 붙이지 않아야 사전 요청 없이 응답을 읽을 수 있어요.
+async function sendFetch(payload){
+  const ac=new AbortController(),tm=setTimeout(()=>ac.abort(),15000);
+  try{
+    const r=await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify(payload),signal:ac.signal});
+    const j=await r.json();
+    return j.ok===true?{ok:true}:{ok:false,code:j.error||('http'+r.status),sure:true};
+  }catch(e){return {ok:false,code:'F-'+(e.name||'error')};}
+  finally{clearTimeout(tm);}
+}
+// 2차: 숨은 iframe에 폼으로 보내고, 서버가 iframe 안에서 postMessage로 결과를 알려줘요.
+function sendFrame(payload){
+  return new Promise(resolve=>{
+    const name='mbf_'+payload.sid,ifr=document.createElement('iframe'),fm=document.createElement('form'),inp=document.createElement('input');
+    ifr.name=name;ifr.title='전송';ifr.hidden=true;
+    fm.method='POST';fm.action=SCRIPT_URL;fm.target=name;fm.acceptCharset='UTF-8';fm.hidden=true;
+    inp.type='hidden';inp.name='payload';inp.value=JSON.stringify(Object.assign({},payload,{via:'frame'}));fm.appendChild(inp);
+    let tm;
+    const on=e=>{let h='';try{h=new URL(e.origin).hostname;}catch(x){}
+      if(!/\.googleusercontent\.com$/.test(h)||!e.data||e.data.mb!==payload.sid)return;
+      done(e.data.ok?{ok:true}:{ok:false,code:e.data.error||'server',sure:true});};
+    const done=r=>{clearTimeout(tm);removeEventListener('message',on);setTimeout(()=>{ifr.remove();fm.remove();},1000);resolve(r);};
+    addEventListener('message',on);
+    tm=setTimeout(()=>done({ok:false,code:'I-timeout'}),20000);
+    document.body.append(ifr,fm);fm.submit();
+  });
+}
 function btns(dis,label){['submit','submit2'].forEach(i=>{const b=document.getElementById(i);b.disabled=dis;b.textContent=label;});}
 async function submit(){
   if(sending)return;
@@ -237,24 +266,25 @@ async function submit(){
   const answers={};ALL.forEach(q=>{answers[String(q.n).padStart(2,'0')+'. '+q.t]=val(q);});
   // 페이지를 연 지 3초가 안 됐으면 잠깐 기다렸다 보내요 (서버의 스팸 기준)
   const wait=3200-(Date.now()-T0);if(wait>0)await new Promise(r=>setTimeout(r,wait));
-  const payload={consent:true,hp:document.getElementById('hp').value,elapsed:Date.now()-T0,answers};
-  let ok=false;
-  if(/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(SCRIPT_URL)){
-    const ac=new AbortController(),tm=setTimeout(()=>ac.abort(),20000);
-    try{
-      // no-cors·헤더 없이 보내야 사전 요청 없이 전송되고, 서버 응답({ok:true})을 읽을 수 있어요
-      const r=await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify(payload),signal:ac.signal});
-      const j=await r.json();ok=r.ok&&j.ok===true;
-    }catch(e){}
-    clearTimeout(tm);
+  SID=SID||uid();
+  const payload={consent:true,hp:document.getElementById('hp').value,elapsed:Date.now()-T0,sid:SID,answers};
+  let res;
+  if(!/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(SCRIPT_URL))res={ok:false,code:'no_url',sure:true};
+  else{
+    res=await sendFetch(payload);
+    // 응답을 못 읽었으면(카카오톡 등 앱 안 브라우저) 숨은 iframe으로 한 번 더 보내요. 같은 제출 번호라 중복 저장되지 않아요.
+    if(!res.ok&&!res.sure){const c1=res.code;res=await sendFrame(payload);if(!res.ok&&!res.sure)res.code=c1+' / '+res.code;}
   }
-  if(ok){
+  if(res.ok){
     st.textContent='제출됐어요! 확인 후 연락드릴게요.'+(left?' (미작성 '+left+'문항은 DM으로 알려주셔도 돼요)':'');
     try{localStorage.removeItem(KEY);}catch(e){}
     btns(true,'제출 완료');
   }else{
     sending=false;btns(false,'다시 제출하기');
-    st.textContent='전송에 실패했어요. 잠시 후 다시 눌러주시거나, 답변 복사하기로 복사해 인스타그램 DM @__merrybun 으로 보내주세요.';
+    st.textContent=(res.sure
+      ?'전송에 실패했어요. 잠시 후 다시 눌러주시거나, 답변 복사하기로 복사해 인스타그램 DM @__merrybun 으로 보내주세요.'
+      :'전송 결과를 확인하지 못했어요. 이미 접수됐을 수 있으니, 답변 복사하기로 복사해 인스타그램 DM @__merrybun 으로 보내주시면 접수 여부를 확인해 드릴게요.')
+      +' (오류: '+res.code+')';
   }
   document.getElementById('done').scrollIntoView({behavior:'smooth',block:'start'});
 }
