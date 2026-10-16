@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
 <title>메리번 예식 체크리스트</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,600&family=Fredoka:wght@600&family=Noto+Sans+KR:wght@400;500;700;800&display=swap">
@@ -55,12 +56,19 @@ button:disabled{opacity:.6;cursor:default}
 button.ghost{background:transparent;color:var(--ink)}
 button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 #out{display:flex;flex-direction:column;gap:12px}
-#out pre{white-space:pre-wrap;word-break:break-word;background:var(--fill);border-radius:16px;padding:16px;font:13.5px/1.7 var(--f-body);margin:0;max-height:360px;overflow:auto;user-select:all}
+#out pre,#complete pre{white-space:pre-wrap;word-break:break-word;background:var(--fill);border-radius:16px;padding:16px;font:13.5px/1.7 var(--f-body);margin:0;max-height:360px;overflow:auto;user-select:all}
 #out .msg{font-size:14px}
 #out .msg b{font-weight:800}
 .ok{color:var(--accent);font-weight:700}
 .err{color:var(--accent);font-size:13.5px;font-weight:700;margin-top:-2px}
 .hp{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
+.btns{display:flex;gap:10px;flex-wrap:wrap}
+.sum{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;margin:0;font-size:14.5px}
+.sum dt{color:var(--sub)}
+.sum dd{margin:0;min-width:0;word-break:break-word}
+/* 화면 상태: 불러오는 중 / 제출 완료 */
+body.is-loading .notice:not(#loading), body.is-loading #f, body.is-loading #done, body.is-loading .bar,
+body.is-done .notice, body.is-done #f, body.is-done #done, body.is-done .bar{display:none}
 footer{text-align:center;color:var(--sub);font-size:13px}
 @media (prefers-reduced-motion: reduce){*{transition:none!important}}
 </style>
@@ -69,9 +77,9 @@ footer{text-align:center;color:var(--sub);font-size:13px}
 
 <div class="wrap">
   <header>
-    <div class="bubble"><span>check list!</span><i></i></div>
-    <h1>예식 전 체크리스트</h1>
-    <p>당일 축의대에서 생길 수 있는 상황을 미리 정해두면, 저희가 두 분 뜻대로 정확하게 응대할 수 있어요.</p>
+    <div class="bubble"><span id="bubble">check list!</span><i></i></div>
+    <h1 id="title">예식 전 체크리스트</h1>
+    <p id="lead">당일 축의대에서 생길 수 있는 상황을 미리 정해두면, 저희가 두 분 뜻대로 정확하게 응대할 수 있어요.</p>
     <div class="logo">MERRYBUN</div>
   </header>
 
@@ -80,6 +88,30 @@ footer{text-align:center;color:var(--sub);font-size:13px}
     <div><b>보내는 방법</b> · 모두 작성한 뒤 맨 아래 <b>개인정보 동의</b>에 체크하고 <b>제출하기</b>를 눌러주세요.</div>
     <div>작성 중인 내용은 이 기기에 자동 저장돼요.</div>
   </div>
+
+  <div class="notice" id="loading" hidden>저장된 답변을 불러오는 중이에요…</div>
+
+  <section id="complete" hidden>
+    <h2>제출 내용</h2>
+    <div class="q"><dl class="sum" id="sum"></dl></div>
+    <div class="q" id="editbox">
+      <div class="t">수정용 링크</div>
+      <div class="d">저희가 확인하기 전까지 이 링크로 어느 기기에서나 답변을 수정할 수 있어요. 개인정보가 담겨 있으니 다른 분께 보내지 마세요.</div>
+      <input type="text" id="editlink" readonly aria-label="수정용 링크">
+      <div class="btns">
+        <button type="button" id="edit">답변 수정하기</button>
+        <button type="button" class="ghost" id="copylink">링크 복사하기</button>
+      </div>
+    </div>
+    <div class="q" id="lockbox" hidden>
+      <div class="ok">업체 확인이 끝나서 더 이상 수정할 수 없어요. 바꿀 내용이 있으면 인스타그램 DM @__merrybun 으로 알려주세요.</div>
+    </div>
+    <div class="q">
+      <div class="btns"><button type="button" class="ghost" id="copy2">답변 복사하기</button></div>
+      <div id="status2" class="ok" role="status" aria-live="polite"></div>
+      <pre id="preview2" hidden></pre>
+    </div>
+  </section>
 
   <form id="f" novalidate></form>
 
@@ -148,7 +180,7 @@ const S=[
 ];
 // ▼ Apps Script 웹앱 배포 후 받은 URL을 여기에 붙여넣으세요
 const SCRIPT_URL='https://script.google.com/macros/s/AKfycbxQ4OH2_gZCViuwDweIZB8VMjoo5ofa_QQTWH_PcFX6P_pjvvkxlI1PAyeeKG7yDtjjYQ/exec';
-const KEY='merrybun-checklist-v1';
+const DRAFT='merrybun-checklist-v1',KEYSTORE='merrybun-checklist-key';
 const T0=Date.now();
 const f=document.getElementById('f');
 let n=0;
@@ -193,10 +225,10 @@ function sync(){
 }
 function save(){
   const d={};ALL.forEach(q=>{if(q.type==='radio'){const c=f.querySelector('input[name="'+q.id+'"]:checked');d[q.id]=c?c.value:'';if(q.other)d[q.id+'_other']=document.getElementById('q_'+q.id+'_other').value;}else d[q.id]=document.getElementById('q_'+q.id).value;});
-  try{localStorage.setItem(KEY,JSON.stringify(d));}catch(e){}
+  try{localStorage.setItem(DRAFT,JSON.stringify(d));}catch(e){}
 }
 function load(){
-  let d=null;try{d=JSON.parse(localStorage.getItem(KEY)||'null');}catch(e){}
+  let d=null;try{d=JSON.parse(localStorage.getItem(DRAFT)||'null');}catch(e){}
   if(!d)return;
   ALL.forEach(q=>{if(q.type==='radio'){const r=[...f.querySelectorAll('input[name="'+q.id+'"]')].find(x=>x.value===d[q.id]);if(r)r.checked=true;if(q.other&&d[q.id+'_other'])document.getElementById('q_'+q.id+'_other').value=d[q.id+'_other'];}else if(d[q.id])document.getElementById('q_'+q.id).value=d[q.id];});
 }
@@ -207,91 +239,170 @@ function text(){
 }
 function setErr(q,on){const x=document.getElementById('q_'+q.id),m=document.getElementById('err_'+q.id);m.hidden=!on;
   if(on){x.setAttribute('aria-invalid','true');x.setAttribute('aria-describedby',m.id);}else{x.removeAttribute('aria-invalid');x.removeAttribute('aria-describedby');}}
-// 답변을 고치면 새 제출로 보고 제출 번호를 새로 만들어요
-f.addEventListener('input',e=>{const q=ALL.find(q=>q.req&&e.target.id==='q_'+q.id);if(q&&val(q))setErr(q,false);SID=null;sync();save();});
-f.addEventListener('change',()=>{SID=null;sync();save();});
+f.addEventListener('input',e=>{const q=ALL.find(q=>q.req&&e.target.id==='q_'+q.id);if(q&&val(q))setErr(q,false);sync();save();});
+f.addEventListener('change',()=>{sync();save();});
 f.addEventListener('submit',e=>e.preventDefault());
 const st=document.getElementById('status'),pv=document.getElementById('preview');
-async function copy(){
-  const t=text();pv.textContent=t;
+const $=id=>document.getElementById(id);
+async function copy(stEl,pvEl,area){
+  const t=text();pvEl.textContent=t;
   const left=ALL.length-ALL.filter(q=>val(q)).length;
   try{await navigator.clipboard.writeText(t);
-    st.textContent='복사했어요! 인스타그램 DM @__merrybun 에 붙여넣어 보내주세요.'+(left?' (미작성 '+left+'문항)':'');}
-  catch(e){pv.hidden=false;const r=document.createRange();r.selectNodeContents(pv);const sel=getSelection();sel.removeAllRanges();sel.addRange(r);
-    st.textContent='자동 복사가 안 돼서 아래 답변을 선택해 두었어요. 길게 눌러 복사해 주세요.';}
-  document.getElementById('done').scrollIntoView({behavior:'smooth',block:'start'});
+    stEl.textContent='복사했어요! 인스타그램 DM @__merrybun 에 붙여넣어 보내주세요.'+(left?' (미작성 '+left+'문항)':'');}
+  catch(e){pvEl.hidden=false;const r=document.createRange();r.selectNodeContents(pvEl);const sel=getSelection();sel.removeAllRanges();sel.addRange(r);
+    stEl.textContent='자동 복사가 안 돼서 아래 답변을 선택해 두었어요. 길게 눌러 복사해 주세요.';}
+  $(area).scrollIntoView({behavior:'smooth',block:'start'});
 }
-let sending=false,SID=null;
-function uid(){return crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2);}
-// 1차: fetch로 보내고 서버 응답({ok:true})을 읽어요. no-cors·헤더를 붙이지 않아야 사전 요청 없이 응답을 읽을 수 있어요.
+
+// ── 서버 통신 ──
+// 수정 키: 처음 제출할 때 만들고, 주소의 # 뒤(#k=...)와 이 기기에 보관해요. 이 키가 있어야 답변을 불러오고 고칠 수 있어요.
+let EKEY=null,META={};
+function newKey(){const a=new Uint8Array(16);crypto.getRandomValues(a);return [...a].map(b=>b.toString(16).padStart(2,'0')).join('');}
+function hashKey(){const m=location.hash.match(/k=([a-f0-9]{32})/);return m?m[1]:null;}
+function storeKey(k){try{localStorage.setItem(KEYSTORE,k);}catch(e){}}
+function storedKey(){try{return localStorage.getItem(KEYSTORE);}catch(e){return null;}}
+function editLink(){return location.origin+location.pathname+'#k='+EKEY;}
+function norm(j){return j&&j.ok===true?{ok:true,data:j}:{ok:false,code:(j&&j.error)||'server',sure:true,data:j||{}};}
+// 1차: fetch로 보내고 서버 응답을 읽어요. no-cors·헤더를 붙이지 않아야 사전 요청 없이 응답을 읽을 수 있어요.
 async function sendFetch(payload){
   const ac=new AbortController(),tm=setTimeout(()=>ac.abort(),15000);
-  try{
-    const r=await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify(payload),signal:ac.signal});
-    const j=await r.json();
-    return j.ok===true?{ok:true}:{ok:false,code:j.error||('http'+r.status),sure:true};
-  }catch(e){return {ok:false,code:'F-'+(e.name||'error')};}
+  try{const r=await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify(payload),signal:ac.signal});return norm(await r.json());}
+  catch(e){return {ok:false,code:'F-'+(e.name||'error')};}
   finally{clearTimeout(tm);}
 }
-// 2차: 숨은 iframe에 폼으로 보내고, 서버가 iframe 안에서 postMessage로 결과를 알려줘요.
+// 2차: 숨은 iframe에 폼으로 보내고, 서버가 iframe 안에서 postMessage로 결과를 알려줘요 (카카오톡 등 앱 안 브라우저 대응)
 function sendFrame(payload){
   return new Promise(resolve=>{
-    const name='mbf_'+payload.sid,ifr=document.createElement('iframe'),fm=document.createElement('form'),inp=document.createElement('input');
+    const rid=newKey(),name='mbf_'+rid,ifr=document.createElement('iframe'),fm=document.createElement('form'),inp=document.createElement('input');
     ifr.name=name;ifr.title='전송';ifr.hidden=true;
     fm.method='POST';fm.action=SCRIPT_URL;fm.target=name;fm.acceptCharset='UTF-8';fm.hidden=true;
-    inp.type='hidden';inp.name='payload';inp.value=JSON.stringify(Object.assign({},payload,{via:'frame'}));fm.appendChild(inp);
+    inp.type='hidden';inp.name='payload';inp.value=JSON.stringify(Object.assign({},payload,{via:'frame',rid,origin:location.origin}));fm.appendChild(inp);
     let tm;
     const on=e=>{let h='';try{h=new URL(e.origin).hostname;}catch(x){}
-      if(!/\.googleusercontent\.com$/.test(h)||!e.data||e.data.mb!==payload.sid)return;
-      done(e.data.ok?{ok:true}:{ok:false,code:e.data.error||'server',sure:true});};
+      if(!/\.googleusercontent\.com$/.test(h)||!e.data||e.data.mb!==rid)return;done(norm(e.data.res));};
     const done=r=>{clearTimeout(tm);removeEventListener('message',on);setTimeout(()=>{ifr.remove();fm.remove();},1000);resolve(r);};
     addEventListener('message',on);
     tm=setTimeout(()=>done({ok:false,code:'I-timeout'}),20000);
     document.body.append(ifr,fm);fm.submit();
   });
 }
-function btns(dis,label){['submit','submit2'].forEach(i=>{const b=document.getElementById(i);b.disabled=dis;b.textContent=label;});}
+async function call(payload){
+  if(!/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(SCRIPT_URL))return {ok:false,code:'no_url',sure:true};
+  let r=await sendFetch(payload);
+  if(!r.ok&&!r.sure){const c1=r.code;r=await sendFrame(payload);if(!r.ok&&!r.sure)r.code=c1+' / '+r.code;}
+  return r;
+}
+
+// ── 화면 전환 ──
+const HEAD={bubble:$('bubble').textContent,title:$('title').textContent,lead:$('lead').textContent};
+function head(b,t,l){$('bubble').textContent=b;$('title').textContent=t;$('lead').textContent=l;}
+function when(s){if(!s)return '';const d=new Date(s);return (d.getMonth()+1)+'월 '+d.getDate()+'일 '+d.toLocaleTimeString('ko-KR',{hour:'numeric',minute:'2-digit'});}
+function showDone(locked,how){
+  document.body.classList.remove('is-loading');document.body.classList.add('is-done');
+  head('thank you!',locked?'확인이 완료됐어요':how==='updated'?'수정이 완료됐어요':'제출이 완료됐어요',
+    locked?'보내주신 내용대로 당일 축의대를 준비할게요.':'확인 후 인스타그램 DM으로 연락드릴게요.');
+  const left=ALL.length-ALL.filter(q=>val(q)).length;
+  const rows=[['계약자',val(ALL[0])],['예식',val(ALL[1])],['제출',when(META.submittedAt)]];
+  if(META.updatedAt)rows.push(['최종 수정',when(META.updatedAt)]);
+  if(left)rows.push(['미작성',left+'문항'+(locked?'':' · 수정하기로 채워주셔도 돼요')]);
+  const dl=$('sum');dl.textContent='';
+  rows.forEach(([k,v])=>{const dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent=k;dd.textContent=v||'-';dl.append(dt,dd);});
+  $('editbox').hidden=locked;$('lockbox').hidden=!locked;$('editlink').value=editLink();
+  $('status2').textContent='';$('preview2').hidden=true;
+  $('complete').hidden=false;window.scrollTo({top:0});
+}
+function showForm(){
+  document.body.classList.remove('is-done','is-loading');$('complete').hidden=true;
+  head(HEAD.bubble,HEAD.title,HEAD.lead);
+  if(EKEY&&META.submittedAt){$('consent').checked=true;btns(false,'수정 제출하기');st.textContent='고칠 내용을 바꾼 뒤 수정 제출하기를 눌러주세요.';}
+  window.scrollTo({top:0});
+}
+// 서버에서 받은 답변("01. 문항": 값)을 화면에 채워요
+function fill(ans){
+  ALL.forEach(q=>{
+    const v=ans[String(q.n).padStart(2,'0')+'. '+q.t]||'';
+    if(q.type!=='radio'){$('q_'+q.id).value=v;return;}
+    f.querySelectorAll('input[name="'+q.id+'"]').forEach(r=>r.checked=false);
+    const other=q.other?$('q_'+q.id+'_other'):null;if(other)other.value='';
+    const r=[...f.querySelectorAll('input[name="'+q.id+'"]')].find(x=>x.value===v&&v!=='직접 입력');
+    if(r){r.checked=true;return;}
+    if(v&&other){f.querySelector('input[name="'+q.id+'"][value="직접 입력"]').checked=true;other.value=v.replace(/^직접 입력:?\s*/,'');}
+  });
+  sync();save();
+}
+
+// ── 제출 ──
+let sending=false;
+function btns(dis,label){['submit','submit2'].forEach(i=>{const b=$(i);b.disabled=dis;b.textContent=label;});}
 async function submit(){
   if(sending)return;
-  const left=ALL.length-ALL.filter(q=>val(q)).length;
   const miss=ALL.filter(q=>q.req&&!val(q));
   ALL.forEach(q=>{if(q.req)setErr(q,!val(q));});
   if(miss.length){
     st.textContent='01번(계약자)과 02번(예식 일시 · 웨딩홀)은 꼭 적어주세요.';
-    const x=document.getElementById('q_'+miss[0].id);x.focus({preventScroll:true});x.scrollIntoView({behavior:'smooth',block:'center'});return;}
-  if(!document.getElementById('consent').checked){
+    const x=$('q_'+miss[0].id);x.focus({preventScroll:true});x.scrollIntoView({behavior:'smooth',block:'center'});return;}
+  if(!$('consent').checked){
     st.textContent='개인정보 수집 · 이용 동의에 체크해 주세요.';
-    document.getElementById('done').scrollIntoView({behavior:'smooth',block:'start'});return;}
+    $('done').scrollIntoView({behavior:'smooth',block:'start'});return;}
+  const label=$('submit').textContent;
   sending=true;btns(true,'보내는 중…');
   const answers={};ALL.forEach(q=>{answers[String(q.n).padStart(2,'0')+'. '+q.t]=val(q);});
   // 페이지를 연 지 3초가 안 됐으면 잠깐 기다렸다 보내요 (서버의 스팸 기준)
   const wait=3200-(Date.now()-T0);if(wait>0)await new Promise(r=>setTimeout(r,wait));
-  SID=SID||uid();
-  const payload={consent:true,hp:document.getElementById('hp').value,elapsed:Date.now()-T0,sid:SID,answers};
-  let res;
-  if(!/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(SCRIPT_URL))res={ok:false,code:'no_url',sure:true};
-  else{
-    res=await sendFetch(payload);
-    // 응답을 못 읽었으면(카카오톡 등 앱 안 브라우저) 숨은 iframe으로 한 번 더 보내요. 같은 제출 번호라 중복 저장되지 않아요.
-    if(!res.ok&&!res.sure){const c1=res.code;res=await sendFrame(payload);if(!res.ok&&!res.sure)res.code=c1+' / '+res.code;}
-  }
-  if(res.ok){
-    st.textContent='제출됐어요! 확인 후 연락드릴게요.'+(left?' (미작성 '+left+'문항은 DM으로 알려주셔도 돼요)':'');
-    try{localStorage.removeItem(KEY);}catch(e){}
-    btns(true,'제출 완료');
+  // 키를 먼저 저장해 두면, 응답을 못 받고 다시 보내도 같은 줄이 고쳐질 뿐 중복으로 쌓이지 않아요
+  if(!EKEY){EKEY=newKey();storeKey(EKEY);}
+  const how=META.submittedAt?'updated':'created';
+  const r=await call({key:EKEY,consent:true,hp:$('hp').value,elapsed:Date.now()-T0,answers});
+  sending=false;
+  if(r.ok){
+    META={submittedAt:r.data.submittedAt,updatedAt:how==='created'?'':r.data.updatedAt};
+    history.replaceState(null,'',editLink());
+    btns(false,'수정 제출하기');st.textContent='';
+    showDone(false,how);
+  }else if(r.code==='locked'){
+    btns(true,label);showDone(true);
   }else{
-    sending=false;btns(false,'다시 제출하기');
-    st.textContent=(res.sure
+    btns(false,label);
+    st.textContent=(r.sure
       ?'전송에 실패했어요. 잠시 후 다시 눌러주시거나, 답변 복사하기로 복사해 인스타그램 DM @__merrybun 으로 보내주세요.'
       :'전송 결과를 확인하지 못했어요. 이미 접수됐을 수 있으니, 답변 복사하기로 복사해 인스타그램 DM @__merrybun 으로 보내주시면 접수 여부를 확인해 드릴게요.')
-      +' (오류: '+res.code+')';
+      +' (오류: '+r.code+')';
+    $('done').scrollIntoView({behavior:'smooth',block:'start'});
   }
-  document.getElementById('done').scrollIntoView({behavior:'smooth',block:'start'});
 }
-document.getElementById('submit').addEventListener('click',submit);
-document.getElementById('submit2').addEventListener('click',submit);
-document.getElementById('copy').addEventListener('click',copy);
+$('submit').addEventListener('click',submit);
+$('submit2').addEventListener('click',submit);
+$('copy').addEventListener('click',()=>copy(st,pv,'done'));
+$('copy2').addEventListener('click',()=>copy($('status2'),$('preview2'),'complete'));
+$('edit').addEventListener('click',showForm);
+$('copylink').addEventListener('click',async()=>{
+  const x=$('editlink');
+  try{await navigator.clipboard.writeText(x.value);$('status2').textContent='수정용 링크를 복사했어요. 나만 볼 수 있는 곳(메모 등)에 보관해 주세요.';}
+  catch(e){x.focus();x.select();$('status2').textContent='링크를 선택해 두었어요. 길게 눌러 복사해 주세요.';}
+});
+
+// ── 시작 ──
 load();sync();
+(async()=>{
+  const hk=hashKey();EKEY=hk||storedKey();
+  if(!EKEY)return;
+  if(hk)storeKey(hk);
+  document.body.classList.add('is-loading');$('loading').hidden=false;
+  const r=await call({action:'load',key:EKEY});
+  $('loading').hidden=true;document.body.classList.remove('is-loading');
+  if(r.ok){
+    META={submittedAt:r.data.submittedAt,updatedAt:r.data.updatedAt};
+    fill(r.data.answers);
+    if(!hk)history.replaceState(null,'',editLink());
+    showDone(r.data.locked);
+  }else if(r.code==='not_found'){
+    // 처음 제출이 실패해 서버에 아직 없는 키예요. 그대로 작성을 이어가면 돼요.
+    if(hk)st.textContent='이 링크로 저장된 답변을 찾지 못했어요. 새로 작성해서 제출해 주세요.';
+  }else{
+    st.textContent='저장된 답변을 불러오지 못했어요. 잠시 후 새로고침해 주세요. 이 기기에 남아 있는 내용을 먼저 보여드려요. (오류: '+r.code+')';
+    window.scrollTo({top:document.body.scrollHeight});
+  }
+})();
 </script>
 
 </body>
