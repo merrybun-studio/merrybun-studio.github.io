@@ -14,7 +14,7 @@ const MAX_LEN = 3000;      // 답변 하나의 최대 글자 수
 const MAX_KEYS = 60;       // 문항 수 상한
 const MIN_ELAPSED = 3000;  // 페이지를 연 뒤 이 시간(ms)보다 빨리 온 제출은 버려요
 // iframe 보조 경로로 결과를 보내도 되는 페이지 주소
-const ALLOWED_ORIGINS = ['https://kwy-del.github.io', 'https://merrybun.github.io', 'http://localhost:8000'];
+const ALLOWED_ORIGINS = ['https://kwy-del.github.io', 'https://merrybun-studio.github.io', 'http://localhost:8000'];
 
 function doPost(e) {
   let data;
