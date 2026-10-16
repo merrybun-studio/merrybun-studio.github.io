@@ -7,6 +7,7 @@
  * - 시트의 "확인" 칸을 체크하면 그 건은 잠겨서 더 이상 수정할 수 없어요.
  */
 const SHEET_NAME = '체크리스트';
+const TIME_FMT = 'yyyy. m. d am/pm h:mm:ss';
 const FIXED = ['제출 시각', '확인', '개인정보 동의', '최종 수정 시각'];
 const KEY_COL = '수정 키';
 const MAX_LEN = 3000;      // 답변 하나의 최대 글자 수
@@ -81,6 +82,10 @@ function save(data) {
     const target = r || sheet.getLastRow() + 1;
     sheet.getRange(target, 1, 1, header.length).setValues([row]);
     sheet.getRange(target, header.indexOf('확인') + 1).insertCheckboxes();
+    // 날짜만 보이지 않게 시각까지 나오는 서식으로 맞춰요
+    ['제출 시각', '최종 수정 시각'].forEach(function (h) {
+      sheet.getRange(target, header.indexOf(h) + 1).setNumberFormat(TIME_FMT);
+    });
     return { ok: true, updated: !!old, submittedAt: iso(row[header.indexOf('제출 시각')]), updatedAt: old ? iso(now) : '' };
   } finally {
     lock.releaseLock();
