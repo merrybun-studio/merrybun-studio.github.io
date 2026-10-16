@@ -113,14 +113,10 @@ footer{text-align:center;color:var(--sub);font-size:13px}
         <button type="button" id="edit">답변 수정하기</button>
         <button type="button" class="ghost" id="copylink">링크 복사하기</button>
       </div>
+      <div id="status2" class="ok" role="status" aria-live="polite"></div>
     </div>
     <div class="q" id="lockbox" hidden>
-      <div class="ok">업체 확인이 끝나서 더 이상 수정할 수 없어요. 바꿀 내용이 있으면 인스타그램 DM @__merrybun 으로 알려주세요.</div>
-    </div>
-    <div class="q">
-      <div class="btns"><button type="button" class="ghost" id="copy2">답변 복사하기</button></div>
-      <div id="status2" class="ok" role="status" aria-live="polite"></div>
-      <pre id="preview2" hidden></pre>
+      <div class="ok">업체 확인이 끝나서 더 이상 수정할 수 없어요.<br>바꿀 내용이 있으면 인스타그램 DM @__merrybun 으로 알려주세요.</div>
     </div>
   </section>
 
@@ -319,7 +315,7 @@ function showDone(locked,how){
   const dl=$('sum');dl.textContent='';
   rows.forEach(([k,v])=>{const dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent=k;dd.textContent=v||'-';dl.append(dt,dd);});
   $('editbox').hidden=locked;$('lockbox').hidden=!locked;$('editlink').value=editLink();
-  $('status2').textContent='';$('preview2').hidden=true;
+  $('status2').textContent='';
   $('complete').hidden=false;window.scrollTo({top:0});
 }
 function showForm(){
@@ -384,7 +380,6 @@ async function submit(){
 $('submit').addEventListener('click',submit);
 $('submit2').addEventListener('click',submit);
 $('copy').addEventListener('click',()=>copy(st,pv,'done'));
-$('copy2').addEventListener('click',()=>copy($('status2'),$('preview2'),'complete'));
 $('edit').addEventListener('click',showForm);
 $('copylink').addEventListener('click',async()=>{
   const x=$('editlink');
